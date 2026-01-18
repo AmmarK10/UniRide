@@ -2,13 +2,13 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Car, MapPin, Ticket, LogOut, User, MessageCircle, CheckCircle, Clock } from 'lucide-react'
 import SearchBar from './components/SearchBar'
 import AvailableRideCard from './components/AvailableRideCard'
-import { format } from 'date-fns'
+import { formatDateTimePKT } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,8 +56,10 @@ export default async function Home({
     redirect('/driver/dashboard')
   }
 
-  // Fetch ALL active rides
-  const { data: allRides } = await supabase
+  // Fetch ALL active rides (no driver filter - passengers see all rides)
+  console.log('=== PASSENGER DASHBOARD DEBUG ===')
+
+  const { data: allRides, error: ridesError } = await supabase
     .from('rides')
     .select(`
             *,
@@ -67,9 +69,19 @@ export default async function Home({
     .gt('available_seats', 0)
     .order('departure_time', { ascending: true })
 
+  if (ridesError) {
+    console.error('Rides fetch error:', ridesError)
+  }
+
+  console.log('Total active rides from DB:', allRides?.length || 0)
+  console.log('Today:', getTodayAbbrev())
+
   // Filter rides
   let filteredRides = allRides || []
+
+  // Filter by recurrence pattern
   filteredRides = filteredRides.filter(ride => isRideAvailableToday(ride.recurrence_pattern))
+  console.log('After recurrence filter:', filteredRides.length)
 
   if (origin) {
     const searchOrigin = origin.toLowerCase()
@@ -77,6 +89,7 @@ export default async function Home({
       ride.origin_location.toLowerCase().includes(searchOrigin) ||
       ride.destination_university.toLowerCase().includes(searchOrigin)
     )
+    console.log('After origin filter:', filteredRides.length)
   }
 
   if (time) {
@@ -88,6 +101,7 @@ export default async function Home({
       const diff = Math.abs(rideMinutes - searchMinutes)
       return diff <= 120
     })
+    console.log('After time filter:', filteredRides.length)
   }
 
   // Get user's requests
@@ -113,6 +127,8 @@ export default async function Home({
 
   // Filter out already requested rides
   const availableRides = filteredRides.filter(r => !requestedRideIds.includes(r.id))
+  console.log('Final available rides (after filtering requested):', availableRides.length)
+  console.log('=== END DEBUG ===')
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -198,7 +214,7 @@ export default async function Home({
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
                         <Clock className="h-3.5 w-3.5" />
-                        <span>{format(new Date(req.rides?.departure_time), 'MMM d, h:mm a')}</span>
+                        <span>{formatDateTimePKT(req.rides?.departure_time)}</span>
                       </div>
                       <Link href={`/chat/${req.id}`}>
                         <Button className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
@@ -305,6 +321,10 @@ export default async function Home({
                 {origin
                   ? `No rides found from "${origin}". Try a different location.`
                   : 'Check back soon for new rides!'}
+              </p>
+              {/* Debug info */}
+              <p className="text-xs text-slate-400 mt-4">
+                Debug: {allRides?.length || 0} total rides in DB | Today: {getTodayAbbrev()}
               </p>
             </CardContent>
           </Card>
