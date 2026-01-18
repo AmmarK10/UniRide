@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { createTimestampFromTimeInput } from '@/lib/timezone'
 
 export async function createRide(formData: FormData): Promise<void> {
     const supabase = await createClient()
@@ -25,19 +26,20 @@ export async function createRide(formData: FormData): Promise<void> {
     const seats = parseInt(formData.get('seats') as string)
     const recurrence = formData.get('recurrence') as string
 
-    // Create a date for today with the specified time
-    const today = new Date()
-    const [depHours, depMinutes] = departureTime.split(':')
-    today.setHours(parseInt(depHours), parseInt(depMinutes), 0, 0)
-    const departureTimestamp = today.toISOString()
+    // Create timestamps with proper PKT timezone handling
+    const departureTimestamp = createTimestampFromTimeInput(departureTime)
 
     let returnTimestamp = null
     if (returnTime) {
-        const returnDate = new Date()
-        const [retHours, retMinutes] = returnTime.split(':')
-        returnDate.setHours(parseInt(retHours), parseInt(retMinutes), 0, 0)
-        returnTimestamp = returnDate.toISOString()
+        returnTimestamp = createTimestampFromTimeInput(returnTime)
     }
+
+    console.log('Creating ride with times:', {
+        input: departureTime,
+        timestamp: departureTimestamp,
+        returnInput: returnTime,
+        returnTimestamp
+    })
 
     const { error } = await supabase.from('rides').insert({
         driver_id: user.id,

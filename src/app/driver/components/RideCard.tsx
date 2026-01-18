@@ -4,9 +4,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { MapPin, Clock, Users, Trash2, CalendarDays, Loader2 } from 'lucide-react'
-import { format } from 'date-fns'
 import { cancelRide } from '../actions'
 import { useState, useTransition } from 'react'
+import { formatTimePKT, formatDatePKT } from '@/lib/timezone'
 
 type RideCardProps = {
     ride: {
@@ -58,10 +58,10 @@ export default function RideCard({ ride }: RideCardProps) {
                         <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
                             <div className="flex items-center gap-1.5">
                                 <Clock className="h-4 w-4 text-slate-400" />
-                                <span>{format(new Date(ride.departure_time), 'h:mm a')}</span>
+                                <span>{formatTimePKT(ride.departure_time)}</span>
                                 {ride.return_time && (
                                     <span className="text-slate-400">
-                                        - {format(new Date(ride.return_time), 'h:mm a')}
+                                        - {formatTimePKT(ride.return_time)}
                                     </span>
                                 )}
                             </div>
@@ -90,7 +90,7 @@ export default function RideCard({ ride }: RideCardProps) {
                         {ride.recurrence_pattern === 'One-off' && (
                             <div className="flex items-center gap-2 text-sm text-slate-500">
                                 <CalendarDays className="h-4 w-4 text-slate-400" />
-                                <span>{format(new Date(ride.departure_time), 'MMM d, yyyy')}</span>
+                                <span>{formatDatePKT(ride.departure_time)}</span>
                                 <Badge variant="outline" className="text-xs border-slate-200">One-off</Badge>
                             </div>
                         )}

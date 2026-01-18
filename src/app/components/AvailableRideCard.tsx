@@ -4,11 +4,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Clock, Users, MapPin, CheckCircle, Loader2 } from 'lucide-react'
-import { format } from 'date-fns'
+import { Clock, Users, CheckCircle, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { requestRide } from '../passenger/actions'
 import { getUniversityLabel } from '@/lib/constants'
+import { formatTimePKT } from '@/lib/timezone'
 
 type RideCardProps = {
     ride: {
@@ -109,7 +109,7 @@ export default function AvailableRideCard({ ride }: RideCardProps) {
                         <div className="flex items-center gap-2 text-slate-600">
                             <Clock className="h-4 w-4 text-slate-400" />
                             <span className="text-sm font-medium">
-                                {format(new Date(ride.departure_time), 'h:mm a')}
+                                {formatTimePKT(ride.departure_time)}
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
