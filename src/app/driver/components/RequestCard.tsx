@@ -1,11 +1,14 @@
+'use client'
+
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { MapPin, Clock, Check, X, MessageCircle, CheckCircle } from 'lucide-react'
+import { MapPin, Clock, Check, X, MessageCircle, CheckCircle, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { updateRequestStatus } from '../actions'
 import Link from 'next/link'
+import { useState, useTransition } from 'react'
 
 type RequestCardProps = {
     request: {
@@ -25,14 +28,33 @@ type RequestCardProps = {
 }
 
 export default function RequestCard({ request }: RequestCardProps) {
+    const [isPending, startTransition] = useTransition()
+    const [pendingAction, setPendingAction] = useState<'accept' | 'reject' | null>(null)
+
     const initials = request.profiles.full_name
         ?.split(' ')
         .map(n => n[0])
         .join('')
         .toUpperCase() || '?'
 
-    const isPending = request.status === 'pending'
+    const isPendingStatus = request.status === 'pending'
     const isAccepted = request.status === 'accepted'
+
+    const handleAccept = () => {
+        setPendingAction('accept')
+        startTransition(async () => {
+            await updateRequestStatus(request.id, 'accepted')
+            setPendingAction(null)
+        })
+    }
+
+    const handleReject = () => {
+        setPendingAction('reject')
+        startTransition(async () => {
+            await updateRequestStatus(request.id, 'rejected')
+            setPendingAction(null)
+        })
+    }
 
     return (
         <Card className={`border bg-white hover:shadow-md transition-all duration-300 rounded-xl overflow-hidden ${isAccepted ? 'border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-white' : 'border-slate-200'
@@ -55,7 +77,7 @@ export default function RequestCard({ request }: RequestCardProps) {
                             <h4 className="font-semibold text-slate-900 truncate">
                                 {request.profiles.full_name}
                             </h4>
-                            {isPending && (
+                            {isPendingStatus && (
                                 <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-0 text-xs">
                                     Pending
                                 </Badge>
@@ -86,35 +108,37 @@ export default function RequestCard({ request }: RequestCardProps) {
 
                 {/* Actions */}
                 <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
-                    {isPending && (
+                    {isPendingStatus && (
                         <>
-                            <form action={async () => {
-                                'use server'
-                                await updateRequestStatus(request.id, 'accepted')
-                            }} className="flex-1">
-                                <Button
-                                    type="submit"
-                                    size="sm"
-                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-                                >
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleAccept}
+                                disabled={isPending}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                            >
+                                {pendingAction === 'accept' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
                                     <Check className="h-4 w-4" />
-                                    Accept
-                                </Button>
-                            </form>
-                            <form action={async () => {
-                                'use server'
-                                await updateRequestStatus(request.id, 'rejected')
-                            }} className="flex-1">
-                                <Button
-                                    type="submit"
-                                    size="sm"
-                                    variant="outline"
-                                    className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-1.5"
-                                >
+                                )}
+                                Accept
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={handleReject}
+                                disabled={isPending}
+                                className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-1.5"
+                            >
+                                {pendingAction === 'reject' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
                                     <X className="h-4 w-4" />
-                                    Reject
-                                </Button>
-                            </form>
+                                )}
+                                Reject
+                            </Button>
                         </>
                     )}
                     {isAccepted && (

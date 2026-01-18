@@ -2,13 +2,15 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 
-export async function createRide(formData: FormData) {
+export async function createRide(formData: FormData): Promise<void> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) return { error: 'Not authenticated' }
+    if (!user) {
+        console.error('Create ride: Not authenticated')
+        return
+    }
 
     // Get user's university from profile
     const { data: profile } = await supabase
@@ -50,13 +52,13 @@ export async function createRide(formData: FormData) {
 
     if (error) {
         console.error('Create ride error:', error)
-        return { error: error.message }
+        return
     }
 
     revalidatePath('/driver/dashboard')
 }
 
-export async function cancelRide(rideId: string) {
+export async function cancelRide(rideId: string): Promise<void> {
     const supabase = await createClient()
 
     const { error } = await supabase
@@ -66,13 +68,13 @@ export async function cancelRide(rideId: string) {
 
     if (error) {
         console.error('Cancel ride error:', error)
-        return { error: error.message }
+        return
     }
 
     revalidatePath('/driver/dashboard')
 }
 
-export async function updateRequestStatus(requestId: string, status: 'accepted' | 'rejected') {
+export async function updateRequestStatus(requestId: string, status: 'accepted' | 'rejected'): Promise<void> {
     const supabase = await createClient()
 
     const { error } = await supabase
@@ -82,7 +84,7 @@ export async function updateRequestStatus(requestId: string, status: 'accepted' 
 
     if (error) {
         console.error('Update request error:', error)
-        return { error: error.message }
+        return
     }
 
     revalidatePath('/driver/dashboard')

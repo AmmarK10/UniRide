@@ -1,9 +1,12 @@
+'use client'
+
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Clock, Users, Trash2, CalendarDays } from 'lucide-react'
+import { MapPin, Clock, Users, Trash2, CalendarDays, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cancelRide } from '../actions'
+import { useState, useTransition } from 'react'
 
 type RideCardProps = {
     ride: {
@@ -19,6 +22,8 @@ type RideCardProps = {
 }
 
 export default function RideCard({ ride }: RideCardProps) {
+    const [isPending, startTransition] = useTransition()
+
     const statusColors = {
         active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
         full: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -28,6 +33,12 @@ export default function RideCard({ ride }: RideCardProps) {
 
     const statusColor = statusColors[ride.status as keyof typeof statusColors] || statusColors.active
     const isFull = ride.available_seats === 0
+
+    const handleCancel = () => {
+        startTransition(async () => {
+            await cancelRide(ride.id)
+        })
+    }
 
     return (
         <Card className="group border border-slate-200 bg-white hover:shadow-lg hover:border-indigo-200 transition-all duration-300 rounded-xl overflow-hidden">
@@ -90,16 +101,20 @@ export default function RideCard({ ride }: RideCardProps) {
                         <Badge className={`${isFull ? statusColors.full : statusColor} border`}>
                             {isFull ? 'Full' : ride.status.charAt(0).toUpperCase() + ride.status.slice(1)}
                         </Badge>
-                        <form action={cancelRide.bind(null, ride.id)}>
-                            <Button
-                                type="submit"
-                                variant="ghost"
-                                size="icon"
-                                className="text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleCancel}
+                            disabled={isPending}
+                            className="text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            {isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
                                 <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </form>
+                            )}
+                        </Button>
                     </div>
                 </div>
             </CardContent>
