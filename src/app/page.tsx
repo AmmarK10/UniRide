@@ -9,6 +9,7 @@ import { Car, MapPin, Ticket, LogOut, User, MessageCircle, CheckCircle, Clock } 
 import SearchBar from './components/SearchBar'
 import AvailableRideCard from './components/AvailableRideCard'
 import { formatDateTimePKT } from '@/lib/timezone'
+import RefreshButton from '@/components/RefreshButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,8 +57,9 @@ export default async function Home({
     redirect('/driver/dashboard')
   }
 
-  // Fetch ALL active rides (no driver filter - passengers see all rides)
+  // Fetch ALL active rides
   console.log('=== PASSENGER DASHBOARD DEBUG ===')
+  console.log('Fetching rides with status="active" and available_seats > 0')
 
   const { data: allRides, error: ridesError } = await supabase
     .from('rides')
@@ -70,19 +72,32 @@ export default async function Home({
     .order('departure_time', { ascending: true })
 
   if (ridesError) {
-    console.error('Rides fetch error:', ridesError)
+    console.error('Query error:', ridesError)
+  } else {
+    console.log('Rides fetched:', allRides?.length)
+    // Log first ride to check structure if exists
+    if (allRides && allRides.length > 0) {
+      console.log('First ride sample:', JSON.stringify(allRides[0], null, 2))
+    }
   }
 
-  console.log('Total active rides from DB:', allRides?.length || 0)
   console.log('Today:', getTodayAbbrev())
 
   // Filter rides
   let filteredRides = allRides || []
+  const totalRides = filteredRides.length
 
-  // Filter by recurrence pattern
+  // 1. Filter by recurrence pattern
+  // For debugging: We'll keep track of what's filtered
+  const nonRecurrenceRides = filteredRides.filter(ride => !isRideAvailableToday(ride.recurrence_pattern))
+  if (nonRecurrenceRides.length > 0) {
+    console.log(`Filtered out ${nonRecurrenceRides.length} rides due to recurrence mismatch (Today: ${getTodayAbbrev()})`)
+  }
+
   filteredRides = filteredRides.filter(ride => isRideAvailableToday(ride.recurrence_pattern))
   console.log('After recurrence filter:', filteredRides.length)
 
+  // 2. Filter by Origin
   if (origin) {
     const searchOrigin = origin.toLowerCase()
     filteredRides = filteredRides.filter(ride =>
@@ -92,6 +107,7 @@ export default async function Home({
     console.log('After origin filter:', filteredRides.length)
   }
 
+  // 3. Filter by Time
   if (time) {
     const [searchHour, searchMin] = time.split(':').map(Number)
     const searchMinutes = searchHour * 60 + searchMin
@@ -99,35 +115,26 @@ export default async function Home({
       const rideDate = new Date(ride.departure_time)
       const rideMinutes = rideDate.getHours() * 60 + rideDate.getMinutes()
       const diff = Math.abs(rideMinutes - searchMinutes)
+      // Allow rides within 2 hours
       return diff <= 120
     })
     console.log('After time filter:', filteredRides.length)
   }
 
-  // Get user's requests
+  // Get user's requests to filter out already requested rides
   const { data: userRequests } = await supabase
     .from('ride_requests')
-    .select(`
-            id,
-            ride_id,
-            status,
-            rides:ride_id (
-                origin_location,
-                destination_university,
-                departure_time,
-                driver:driver_id(full_name, university_name)
-            )
-        `)
+    .select('ride_id, status')
     .eq('passenger_id', user.id)
     .in('status', ['pending', 'accepted'])
 
   const requestedRideIds = userRequests?.map(r => r.ride_id) || []
-  const acceptedRequests = userRequests?.filter(r => r.status === 'accepted') || []
-  const pendingRequests = userRequests?.filter(r => r.status === 'pending') || []
 
-  // Filter out already requested rides
+  // 4. Filter out already requested rides
   const availableRides = filteredRides.filter(r => !requestedRideIds.includes(r.id))
-  console.log('Final available rides (after filtering requested):', availableRides.length)
+
+  console.log(`Filtered out ${filteredRides.length - availableRides.length} already requested rides`)
+  console.log('Final available rides:', availableRides.length)
   console.log('=== END DEBUG ===')
 
   return (
@@ -171,89 +178,6 @@ export default async function Home({
           </div>
         </div>
       </header>
-
-      {/* Active Chats Section - Show if there are accepted requests */}
-      {acceptedRequests.length > 0 && (
-        <section className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center gap-2 mb-4">
-              <MessageCircle className="h-5 w-5 text-emerald-600" />
-              <h2 className="text-lg font-semibold text-slate-900">Active Rides</h2>
-              <Badge className="bg-emerald-100 text-emerald-700 border-0">
-                {acceptedRequests.length}
-              </Badge>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {acceptedRequests.map((req: any) => {
-                const driverInitials = req.rides?.driver?.full_name
-                  ?.split(' ')
-                  .map((n: string) => n[0])
-                  .join('')
-                  .toUpperCase() || '?'
-
-                return (
-                  <Card key={req.id} className="border-emerald-200 bg-white hover:shadow-md transition-all">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <Avatar className="h-10 w-10 border-2 border-emerald-200">
-                          <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-sm font-medium">
-                            {driverInitials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-slate-900 truncate">
-                              {req.rides?.driver?.full_name}
-                            </p>
-                            <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                          </div>
-                          <p className="text-xs text-slate-500">
-                            {req.rides?.origin_location} → {req.rides?.destination_university}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>{formatDateTimePKT(req.rides?.departure_time)}</span>
-                      </div>
-                      <Link href={`/chat/${req.id}`}>
-                        <Button className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-                          <MessageCircle className="h-4 w-4" />
-                          Chat with {req.rides?.driver?.full_name?.split(' ')[0]}
-                        </Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Pending Requests Notification */}
-      {pendingRequests.length > 0 && (
-        <section className="bg-amber-50 border-b border-amber-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-100">
-                <Clock className="h-4 w-4 text-amber-600" />
-              </div>
-              <div>
-                <p className="font-medium text-slate-900">
-                  {pendingRequests.length} pending request{pendingRequests.length > 1 ? 's' : ''}
-                </p>
-                <p className="text-sm text-slate-500">Waiting for driver approval</p>
-              </div>
-              <Link href="/trips" className="ml-auto">
-                <Button variant="outline" size="sm" className="border-amber-200 text-amber-700 hover:bg-amber-100">
-                  View All
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">
@@ -317,15 +241,22 @@ export default async function Home({
               <h3 className="text-xl font-semibold text-slate-900 mb-2">
                 No rides available yet
               </h3>
-              <p className="text-slate-500 max-w-md mx-auto mb-4">
+              <p className="text-slate-500 max-w-md mx-auto mb-6">
                 {origin
                   ? `No rides found from "${origin}". Try a different location.`
                   : 'Check back soon for new rides!'}
               </p>
+
+              <RefreshButton />
+
               {/* Debug info */}
-              <p className="text-xs text-slate-400 mt-4">
-                Debug: {allRides?.length || 0} total rides in DB | Today: {getTodayAbbrev()}
-              </p>
+              <div className="mt-8 p-4 bg-slate-100 rounded-lg text-left text-xs text-slate-500 font-mono overflow-auto max-w-md mx-auto">
+                <p className="font-bold mb-2">Debug Info:</p>
+                <p>Total Active Rides in DB: {totalRides}</p>
+                <p>Filtered by Day ({getTodayAbbrev()}): {nonRecurrenceRides.length} hidden</p>
+                <p>Already Requested: {requestedRideIds.length}</p>
+                <p>Final Visible: {availableRides.length}</p>
+              </div>
             </CardContent>
           </Card>
         )}
