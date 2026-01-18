@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Car, AlertCircle, CheckCircle, MailCheck, Loader2, ArrowLeft } from "lucide-react"
+import { Car, AlertCircle, MailCheck, Loader2, ArrowLeft } from "lucide-react"
 
 export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false)
@@ -23,7 +23,6 @@ export default function LoginPage() {
     const [isSignedUp, setIsSignedUp] = useState(false)
     const [signupEmail, setSignupEmail] = useState('')
     const router = useRouter()
-    const supabase = createClient()
 
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -34,19 +33,36 @@ export default function LoginPage() {
         const email = formData.get('email') as string
         const password = formData.get('password') as string
 
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        })
+        try {
+            console.log('=== LOGIN ATTEMPT ===')
+            const supabase = createClient()
+            console.log('Supabase client created successfully')
 
-        if (error) {
-            setError(error.message)
+            const { error, data } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            })
+
+            console.log('Login response:', {
+                hasError: !!error,
+                errorMessage: error?.message,
+                errorStatus: error?.status,
+                hasSession: !!data?.session
+            })
+
+            if (error) {
+                setError(`Login failed: ${error.message} (Status: ${error.status || 'unknown'})`)
+                setIsLoading(false)
+                return
+            }
+
+            router.push('/')
+            router.refresh()
+        } catch (err: any) {
+            console.error('=== LOGIN EXCEPTION ===', err)
+            setError(`Network error: ${err.message || 'Failed to connect to authentication server'}`)
             setIsLoading(false)
-            return
         }
-
-        router.push('/')
-        router.refresh()
     }
 
     const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -58,31 +74,49 @@ export default function LoginPage() {
         const email = formData.get('email') as string
         const password = formData.get('password') as string
 
-        const { error, data } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                emailRedirectTo: `${window.location.origin}/auth/confirm`,
-            },
-        })
+        try {
+            console.log('=== SIGNUP ATTEMPT ===')
+            const supabase = createClient()
+            console.log('Supabase client created successfully')
 
-        if (error) {
-            setError(error.message)
+            const { error, data } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    emailRedirectTo: `${window.location.origin}/auth/confirm`,
+                },
+            })
+
+            console.log('Signup response:', {
+                hasError: !!error,
+                errorMessage: error?.message,
+                errorStatus: error?.status,
+                hasUser: !!data?.user,
+                hasSession: !!data?.session
+            })
+
+            if (error) {
+                setError(`Signup failed: ${error.message} (Status: ${error.status || 'unknown'})`)
+                setIsLoading(false)
+                return
+            }
+
+            // Check if email confirmation is required (session is null but user exists)
+            if (data.user && !data.session) {
+                setSignupEmail(email)
+                setIsSignedUp(true)
+            } else if (data.session) {
+                // Auto-confirmed (email confirmation disabled)
+                router.push('/onboarding')
+                router.refresh()
+            }
+
             setIsLoading(false)
-            return
+        } catch (err: any) {
+            console.error('=== SIGNUP EXCEPTION ===', err)
+            setError(`Network error: ${err.message || 'Failed to connect to authentication server'}`)
+            setIsLoading(false)
         }
-
-        // Check if email confirmation is required (session is null but user exists)
-        if (data.user && !data.session) {
-            setSignupEmail(email)
-            setIsSignedUp(true)
-        } else if (data.session) {
-            // Auto-confirmed (email confirmation disabled)
-            router.push('/onboarding')
-            router.refresh()
-        }
-
-        setIsLoading(false)
     }
 
     // Show success message after signup
@@ -142,9 +176,12 @@ export default function LoginPage() {
 
                 {/* Error Message */}
                 {error && (
-                    <div className="flex items-center gap-2 rounded-lg bg-red-500/20 border border-red-500/50 p-4 text-red-200">
-                        <AlertCircle className="h-5 w-5 flex-shrink-0" />
-                        <p className="text-sm">{error}</p>
+                    <div className="flex items-start gap-2 rounded-lg bg-red-500/20 border border-red-500/50 p-4 text-red-200">
+                        <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-medium">Error</p>
+                            <p className="text-sm opacity-90">{error}</p>
+                        </div>
                     </div>
                 )}
 
