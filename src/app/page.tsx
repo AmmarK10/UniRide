@@ -4,11 +4,10 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Car, MapPin, Ticket, LogOut, User, MessageCircle, CheckCircle, Clock } from 'lucide-react'
+import { Car, MapPin, Ticket, LogOut, User, LayoutDashboard, Search } from 'lucide-react'
 import SearchBar from './components/SearchBar'
 import AvailableRideCard from './components/AvailableRideCard'
-import { formatDateTimePKT } from '@/lib/timezone'
+import MyRideCard from './components/MyRideCard'
 import RefreshButton from '@/components/RefreshButton'
 
 export const dynamic = 'force-dynamic'
@@ -57,11 +56,28 @@ export default async function Home({
     redirect('/driver/dashboard')
   }
 
-  // Fetch ALL active rides
-  console.log('=== PASSENGER DASHBOARD DEBUG ===')
-  console.log('Fetching rides with status="active" and available_seats > 0')
+  // Fetch user's requests first
+  const { data: userRequests } = await supabase
+    .from('ride_requests')
+    .select(`
+            id,
+            ride_id,
+            status,
+            rides:ride_id (
+                origin_location,
+                destination_university,
+                departure_time,
+                driver:driver_id(full_name, university_name)
+            )
+        `)
+    .eq('passenger_id', user.id)
+    .in('status', ['pending', 'accepted'])
+    .order('created_at', { ascending: false }) // Newest first
 
-  const { data: allRides, error: ridesError } = await supabase
+  const requestedRideIds = userRequests?.map(r => r.ride_id) || []
+
+  // Fetch ALL active rides
+  const { data: allRides } = await supabase
     .from('rides')
     .select(`
             *,
@@ -71,43 +87,20 @@ export default async function Home({
     .gt('available_seats', 0)
     .order('departure_time', { ascending: true })
 
-  if (ridesError) {
-    console.error('Query error:', ridesError)
-  } else {
-    console.log('Rides fetched:', allRides?.length)
-    // Log first ride to check structure if exists
-    if (allRides && allRides.length > 0) {
-      console.log('First ride sample:', JSON.stringify(allRides[0], null, 2))
-    }
-  }
-
-  console.log('Today:', getTodayAbbrev())
-
   // Filter rides
   let filteredRides = allRides || []
-  const totalRides = filteredRides.length
 
-  // 1. Filter by recurrence pattern
-  // For debugging: We'll keep track of what's filtered
-  const nonRecurrenceRides = filteredRides.filter(ride => !isRideAvailableToday(ride.recurrence_pattern))
-  if (nonRecurrenceRides.length > 0) {
-    console.log(`Filtered out ${nonRecurrenceRides.length} rides due to recurrence mismatch (Today: ${getTodayAbbrev()})`)
-  }
-
+  // Filter by recurrence pattern
   filteredRides = filteredRides.filter(ride => isRideAvailableToday(ride.recurrence_pattern))
-  console.log('After recurrence filter:', filteredRides.length)
 
-  // 2. Filter by Origin
   if (origin) {
     const searchOrigin = origin.toLowerCase()
     filteredRides = filteredRides.filter(ride =>
       ride.origin_location.toLowerCase().includes(searchOrigin) ||
       ride.destination_university.toLowerCase().includes(searchOrigin)
     )
-    console.log('After origin filter:', filteredRides.length)
   }
 
-  // 3. Filter by Time
   if (time) {
     const [searchHour, searchMin] = time.split(':').map(Number)
     const searchMinutes = searchHour * 60 + searchMin
@@ -118,27 +111,13 @@ export default async function Home({
       // Allow rides within 2 hours
       return diff <= 120
     })
-    console.log('After time filter:', filteredRides.length)
   }
 
-  // Get user's requests to filter out already requested rides
-  const { data: userRequests } = await supabase
-    .from('ride_requests')
-    .select('ride_id, status')
-    .eq('passenger_id', user.id)
-    .in('status', ['pending', 'accepted'])
-
-  const requestedRideIds = userRequests?.map(r => r.ride_id) || []
-
-  // 4. Filter out already requested rides
+  // Filter out already requested rides
   const availableRides = filteredRides.filter(r => !requestedRideIds.includes(r.id))
 
-  console.log(`Filtered out ${filteredRides.length - availableRides.length} already requested rides`)
-  console.log('Final available rides:', availableRides.length)
-  console.log('=== END DEBUG ===')
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -153,12 +132,6 @@ export default async function Home({
             </Link>
 
             <div className="flex items-center gap-3">
-              <Link href="/trips">
-                <Button variant="ghost" className="gap-2 text-slate-600 hover:text-slate-900">
-                  <Ticket className="h-4 w-4" />
-                  <span className="hidden sm:inline">My Trips</span>
-                </Button>
-              </Link>
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-sm">
                 <User className="h-4 w-4" />
                 <span>{profile.full_name || 'Passenger'}</span>
@@ -179,88 +152,97 @@ export default async function Home({
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-100 rounded-full blur-3xl opacity-60" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-100 rounded-full blur-3xl opacity-60" />
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
-          <div className="text-center max-w-3xl mx-auto mb-12">
+        {/* Hero / Search Section */}
+        <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl -mr-16 -mt-16 opacity-50" />
+
+          <div className="relative z-10 max-w-2xl">
             <Badge variant="secondary" className="mb-4 bg-indigo-100 text-indigo-700 border-0">
               <MapPin className="h-3 w-3 mr-1" />
               {profile.university_name}
             </Badge>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 tracking-tight">
-              Find your ride to{' '}
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-                campus
-              </span>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
+              Where are you heading today?
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 mb-8">
-              Connect with verified students, share rides, and make your commute better.
+            <p className="text-slate-500 mb-6">
+              Find fellow students to share your commute.
             </p>
-          </div>
-
-          <div className="max-w-3xl mx-auto">
             <SearchBar />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Results Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">Available Rides</h2>
-            <p className="text-slate-500 mt-1">
-              {availableRides.length} ride{availableRides.length !== 1 ? 's' : ''} found
-              {origin && ` for "${origin}"`}
-            </p>
-          </div>
-          {(origin || time) && (
-            <Link href="/">
-              <Button variant="outline" size="sm">Clear Filters</Button>
-            </Link>
-          )}
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        {availableRides.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {availableRides.map((ride: any) => (
-              <AvailableRideCard key={ride.id} ride={ride} />
-            ))}
-          </div>
-        ) : (
-          <Card className="border border-dashed border-slate-300 bg-slate-50/50 rounded-2xl">
-            <CardContent className="py-20 text-center">
-              <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 mb-6">
-                <Car className="h-10 w-10 text-slate-400" />
+          {/* Main Content: Available Rides */}
+          <div className="lg:col-span-8 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Search className="h-5 w-5 text-indigo-600" />
+                Available Rides
+              </h2>
+              {(origin || time) && (
+                <Link href="/">
+                  <Button variant="outline" size="sm">Clear Filters</Button>
+                </Link>
+              )}
+            </div>
+
+            {availableRides.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {availableRides.map((ride: any) => (
+                  <AvailableRideCard key={ride.id} ride={ride} />
+                ))}
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                No rides available yet
-              </h3>
-              <p className="text-slate-500 max-w-md mx-auto mb-6">
-                {origin
-                  ? `No rides found from "${origin}". Try a different location.`
-                  : 'Check back soon for new rides!'}
-              </p>
+            ) : (
+              <Card className="border border-dashed border-slate-300 bg-slate-50/50 rounded-2xl">
+                <CardContent className="py-12 text-center">
+                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 mb-4">
+                    <Car className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                    No rides available
+                  </h3>
+                  <p className="text-slate-500 max-w-sm mx-auto mb-6 text-sm">
+                    {origin
+                      ? `No rides matches for "${origin}".`
+                      : 'There are no other rides available right now.'}
+                  </p>
+                  <RefreshButton />
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
-              <RefreshButton />
+          {/* Sidebar: My Rides */}
+          <div className="lg:col-span-4 space-y-6">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <LayoutDashboard className="h-5 w-5 text-indigo-600" />
+              My Rides
+            </h2>
 
-              {/* Debug info */}
-              <div className="mt-8 p-4 bg-slate-100 rounded-lg text-left text-xs text-slate-500 font-mono overflow-auto max-w-md mx-auto">
-                <p className="font-bold mb-2">Debug Info:</p>
-                <p>Total Active Rides in DB: {totalRides}</p>
-                <p>Filtered by Day ({getTodayAbbrev()}): {nonRecurrenceRides.length} hidden</p>
-                <p>Already Requested: {requestedRideIds.length}</p>
-                <p>Final Visible: {availableRides.length}</p>
+            {userRequests && userRequests.length > 0 ? (
+              <div className="space-y-4">
+                {userRequests.map((req: any) => (
+                  <MyRideCard key={req.id} request={req} />
+                ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
-      </section>
+            ) : (
+              <Card className="bg-white border-slate-200">
+                <CardContent className="py-8 text-center">
+                  <Ticket className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                  <h3 className="font-medium text-slate-900">No active trips</h3>
+                  <p className="text-sm text-slate-500 mt-1">
+                    You haven't requested any rides yet.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+        </div>
+      </main>
     </div>
   )
 }
