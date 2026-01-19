@@ -55,35 +55,33 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
     }, [supabase, userId])
 
     useEffect(() => {
-        console.log('Setting up NUKE subscription for user:', userId)
+        console.log("STARTING RIDE SUBSCRIPTION...")
 
         const channel = supabase
-            .channel('my_trips_loud')
+            .channel('ride_requests_updates')
             .on(
                 'postgres_changes',
                 {
-                    event: '*',
+                    event: 'UPDATE',
                     schema: 'public',
                     table: 'ride_requests',
                     filter: `passenger_id=eq.${userId}`
                 },
                 (payload) => {
                     const newRecord = payload.new as any
-                    if (newRecord && newRecord.status) {
-                        console.log("RIDE_STATUS_CHANGE_DETECTED", newRecord.status)
-                    }
-                    console.log("!!! REALTIME EVENT DETECTED - RELOADING PAGE !!!")
+                    console.log("!!! STATUS UPDATE RECEIVED !!!", newRecord.status)
 
-                    // The Nuclear Option: Hard Reload
-                    window.location.reload()
+                    if (newRecord.status === 'accepted') {
+                        console.log("!!! MATCHED ACCEPTED STATUS - RELOADING !!!")
+                        window.location.reload()
+                    }
                 }
             )
             .subscribe((status) => {
-                console.log("Ride Request Subscription Status:", status)
+                console.log("RIDE_SUB_STATUS:", status)
             })
 
         return () => {
-            console.log('Cleaning up loud subscription')
             supabase.removeChannel(channel)
         }
     }, [supabase, userId])
