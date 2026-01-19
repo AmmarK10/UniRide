@@ -55,50 +55,38 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
     }, [supabase, userId])
 
     useEffect(() => {
-        console.log('Setting up real-time subscription for user:', userId)
+        console.log('Setting up NUKE subscription for user:', userId)
 
-        // Subscribe to my requests changing (e.g. driver accepts)
         const channel = supabase
-            .channel('my_trips')
+            .channel('my_trips_loud')
             .on(
                 'postgres_changes',
                 {
-                    event: 'UPDATE',
+                    event: '*',
                     schema: 'public',
                     table: 'ride_requests',
                     filter: `passenger_id=eq.${userId}`
                 },
                 (payload) => {
-                    console.log('Realtime UPDATE payload:', payload)
-
-                    // Immediate state update for status change
                     const newRecord = payload.new as any
                     if (newRecord && newRecord.status) {
-                        // Update local state immediately
-                        setRequests(prev => prev.map(req =>
-                            req.id === newRecord.id
-                                ? { ...req, ...newRecord }
-                                : req
-                        ))
+                        console.log("RIDE_STATUS_CHANGE_DETECTED", newRecord.status)
                     }
+                    console.log("!!! REALTIME EVENT DETECTED - RELOADING PAGE !!!")
 
-                    // Trigger refresh to be safe (refresh takes time, state update is instant)
-                    refreshRequests()
+                    // The Nuclear Option: Hard Reload
+                    window.location.reload()
                 }
             )
             .subscribe((status) => {
-                console.log('Trips subscription status:', status)
+                console.log("Ride Request Subscription Status:", status)
             })
 
-        // Also listen for Ride changes (e.g. time change)
-        // This is harder to filter precisely without a list of ride IDs.
-        // We'll skip complex ride subscription for now as the prompt focused on Status ("Active" or "Full")
-
         return () => {
-            console.log('Cleaning up trips subscription')
+            console.log('Cleaning up loud subscription')
             supabase.removeChannel(channel)
         }
-    }, [supabase, userId, refreshRequests])
+    }, [supabase, userId])
 
 
     // Separate into upcoming and past
