@@ -57,11 +57,13 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
                         filter: `receiver_id=eq.${user.id}`,
                     },
                     (payload) => {
-                        console.log('New message received, updating count')
+                        console.log('Realtime Update Received (Unread):', payload)
                         setUnreadCount(prev => prev + 1)
                     }
                 )
-                .subscribe()
+                .subscribe((status) => {
+                    console.log('Unread subscription status:', status)
+                })
         }
 
         setupRealtime()

@@ -1,4 +1,5 @@
 'use client'
+import { useUnread } from '@/context/UnreadContext'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
@@ -34,18 +35,25 @@ export default function ChatWindow({
     const scrollRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
 
+    const { refreshUnreadCount } = useUnread()
+
     // Mark messages as read
     useEffect(() => {
         const markRead = async () => {
-            await supabase
+            const { error } = await supabase
                 .from('messages')
                 .update({ is_read: true })
                 .eq('ride_request_id', requestId)
                 .eq('receiver_id', currentUserId)
                 .eq('is_read', false)
+
+            if (!error) {
+                // Refresh global count after marking read
+                refreshUnreadCount()
+            }
         }
         markRead()
-    }, [requestId, currentUserId, messages, supabase])
+    }, [requestId, currentUserId, messages, supabase, refreshUnreadCount])
 
     // Scroll to bottom function
     const scrollToBottom = useCallback((smooth = true) => {

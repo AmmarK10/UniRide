@@ -17,16 +17,14 @@ import UnreadBadge from '@/components/UnreadBadge'
 
 type TripsClientProps = {
     initialRequests: any[]
+    userId: string
 }
 
-export default function TripsClient({ initialRequests }: TripsClientProps) {
+export default function TripsClient({ initialRequests, userId }: TripsClientProps) {
     const [requests, setRequests] = useState(initialRequests)
     const supabase = createClient()
 
     const refreshRequests = useCallback(async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
         const { data: updatedRequests } = await supabase
             .from('ride_requests')
             .select(`
@@ -45,15 +43,17 @@ export default function TripsClient({ initialRequests }: TripsClientProps) {
                     )
                 )
             `)
-            .eq('passenger_id', user.id)
+            .eq('passenger_id', userId)
             .order('created_at', { ascending: false })
 
         if (updatedRequests) {
             setRequests(updatedRequests)
         }
-    }, [supabase])
+    }, [supabase, userId])
 
     useEffect(() => {
+        console.log('Setting up real-time subscription for user:', userId)
+
         // Subscribe to my requests changing (e.g. driver accepts)
         const channel = supabase
             .channel('my_trips')
@@ -63,27 +63,38 @@ export default function TripsClient({ initialRequests }: TripsClientProps) {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'ride_requests',
-                    filter: `passenger_id=eq.${requests[0]?.passenger_id || 'UNKNOWN'}` // We need user ID, but simple refresh on any update works too if we filter by ID in the query 
+                    filter: `passenger_id=eq.${userId}`
                 },
                 (payload) => {
-                    // Ideally we filter better, but for now refresh all on any relevant change
-                    // Since we can't easily get current user ID in the filter string without prop or async
-                    // We will rely on the fact that RLS might block other people's updates, 
-                    // OR we just refresh. 
-                    // Actually, let's just refresh.
+                    console.log('Realtime Update Received:', payload)
+
+                    // Immediate state update for status change
+                    const newRecord = payload.new as any
+                    if (newRecord && newRecord.status) {
+                        setRequests(prev => prev.map(req =>
+                            req.id === newRecord.id
+                                ? { ...req, status: newRecord.status }
+                                : req
+                        ))
+                    }
+
+                    // Also refresh to ensure all data (like expanded relations) is up to date
                     refreshRequests()
                 }
             )
-            .subscribe()
+            .subscribe((status) => {
+                console.log('Trips subscription status:', status)
+            })
 
         // Also listen for Ride changes (e.g. time change)
         // This is harder to filter precisely without a list of ride IDs. 
         // We'll skip complex ride subscription for now as the prompt focused on Status ("Active" or "Full")
 
         return () => {
+            console.log('Cleaning up trips subscription')
             supabase.removeChannel(channel)
         }
-    }, [supabase, refreshRequests])
+    }, [supabase, userId, refreshRequests])
 
 
     // Separate into upcoming and past

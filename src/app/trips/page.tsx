@@ -33,6 +33,6 @@ export default async function MyTripsPage() {
         .order('created_at', { ascending: false })
 
     return (
-        <TripsClient initialRequests={requests || []} />
+        <TripsClient initialRequests={requests || []} userId={user.id} />
     )
 }
