@@ -55,10 +55,11 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
     }, [supabase, userId])
 
     useEffect(() => {
-        console.log("STARTING RIDE SUBSCRIPTION...")
+        // 1. Top-Level Effect: Runs immediately on mount
+        console.log("STARTING RIDE SUBSCRIPTION SETUP...")
 
         const channel = supabase
-            .channel('ride_requests_updates')
+            .channel('ride_requests_debug_channel')
             .on(
                 'postgres_changes',
                 {
@@ -68,17 +69,19 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
                     filter: `passenger_id=eq.${userId}`
                 },
                 (payload) => {
+                    // 3. The Event Handler
                     const newRecord = payload.new as any
-                    console.log("!!! STATUS UPDATE RECEIVED !!!", newRecord.status)
+                    console.log("DATABASE_UPDATE_RECEIVED", newRecord.status)
 
                     if (newRecord.status === 'accepted') {
-                        console.log("!!! MATCHED ACCEPTED STATUS - RELOADING !!!")
+                        console.log("!!! ACCEPTED STATUS - RELOADING PAGE !!!")
                         window.location.reload()
                     }
                 }
             )
             .subscribe((status) => {
-                console.log("RIDE_SUB_STATUS:", status)
+                // 2. Subscription Logic Log
+                console.log("RIDE_SUB_CHECK:", status)
             })
 
         return () => {
