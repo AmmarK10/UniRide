@@ -76,7 +76,7 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
                         // Update local state immediately
                         setRequests(prev => prev.map(req =>
                             req.id === newRecord.id
-                                ? { ...req, status: newRecord.status }
+                                ? { ...req, ...newRecord }
                                 : req
                         ))
                     }

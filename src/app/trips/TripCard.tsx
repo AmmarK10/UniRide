@@ -126,10 +126,7 @@ export default function TripCard({ request, userId }: TripCardProps) {
                             </Avatar>
                             {/* Unread Badge - Red Dot */}
                             {unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-red-500 ring-2 ring-white">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                                </span>
+                                <span className="absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
                             )}
                         </div>
                         <div>
