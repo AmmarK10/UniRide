@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Car, LogOut, User } from 'lucide-react'
+import UnreadBadge from '@/components/UnreadBadge'
 
 export default async function DriverLayout({
     children,
@@ -39,9 +40,10 @@ export default async function DriverLayout({
                         </Link>
 
                         <div className="flex items-center gap-3">
-                            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-sm">
+                            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-sm relative">
                                 <User className="h-4 w-4" />
                                 <span>{profile?.full_name || 'Driver'}</span>
+                                <UnreadBadge />
                             </div>
                             <form action="/auth/signout" method="post">
                                 <Button

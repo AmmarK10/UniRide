@@ -25,9 +25,10 @@ type RequestCardProps = {
             departure_time: string
         }
     }
+    onOptimisticUpdate?: (requestId: string, status: 'accepted' | 'rejected') => void
 }
 
-export default function RequestCard({ request }: RequestCardProps) {
+export default function RequestCard({ request, onOptimisticUpdate }: RequestCardProps) {
     const [isPending, startTransition] = useTransition()
     const [pendingAction, setPendingAction] = useState<'accept' | 'reject' | null>(null)
 
@@ -42,6 +43,11 @@ export default function RequestCard({ request }: RequestCardProps) {
 
     const handleAccept = () => {
         setPendingAction('accept')
+        // Optimistic update
+        if (onOptimisticUpdate) {
+            onOptimisticUpdate(request.id, 'accepted')
+        }
+
         startTransition(async () => {
             await updateRequestStatus(request.id, 'accepted')
             setPendingAction(null)
@@ -50,6 +56,11 @@ export default function RequestCard({ request }: RequestCardProps) {
 
     const handleReject = () => {
         setPendingAction('reject')
+        // Optimistic update
+        if (onOptimisticUpdate) {
+            onOptimisticUpdate(request.id, 'rejected')
+        }
+
         startTransition(async () => {
             await updateRequestStatus(request.id, 'rejected')
             setPendingAction(null)
@@ -64,8 +75,8 @@ export default function RequestCard({ request }: RequestCardProps) {
                     {/* Avatar */}
                     <Avatar className={`h-12 w-12 border-2 ${isAccepted ? 'border-emerald-200' : 'border-indigo-100'}`}>
                         <AvatarFallback className={`font-medium text-white ${isAccepted
-                                ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                                : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+                            ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                            : 'bg-gradient-to-br from-indigo-500 to-purple-600'
                             }`}>
                             {initials}
                         </AvatarFallback>

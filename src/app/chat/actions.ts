@@ -10,12 +10,14 @@ export async function sendMessage(formData: FormData) {
 
     const requestId = formData.get('requestId') as string
     const content = formData.get('content') as string
+    const receiverId = formData.get('receiverId') as string
 
     if (!content || !content.trim()) return
 
     const { error } = await supabase.from('messages').insert({
         ride_request_id: requestId,
         sender_id: user.id,
+        receiver_id: receiverId,
         content: content
     })
 

@@ -214,6 +214,7 @@ export default async function ChatPage({
                     requestId={requestId}
                     initialMessages={messages || []}
                     currentUserId={user.id}
+                    receiverId={isDriver ? request.passenger_id : request.rides?.driver_id}
                 />
             </div>
         </div>

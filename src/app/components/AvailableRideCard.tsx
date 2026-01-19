@@ -40,14 +40,16 @@ export default function AvailableRideCard({ ride }: RideCardProps) {
     const isLowSeats = seatsLeft <= 2
 
     const handleRequest = async () => {
-        setIsLoading(true)
+        // Optimistic update
+        setRequested(true)
+
         try {
             await requestRide(ride.id)
-            setRequested(true)
         } catch (error) {
             console.error('Request failed:', error)
-        } finally {
-            setIsLoading(false)
+            // Rollback on error
+            setRequested(false)
+            // TODO: Add toast notification here
         }
     }
 

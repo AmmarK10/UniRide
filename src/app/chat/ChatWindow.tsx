@@ -18,11 +18,13 @@ type Message = {
 export default function ChatWindow({
     requestId,
     initialMessages,
-    currentUserId
+    currentUserId,
+    receiverId
 }: {
     requestId: string
     initialMessages: Message[]
     currentUserId: string
+    receiverId: string
 }) {
     const [messages, setMessages] = useState<Message[]>(initialMessages)
     const [isSending, setIsSending] = useState(false)
@@ -31,6 +33,19 @@ export default function ChatWindow({
     const formRef = useRef<HTMLFormElement>(null)
     const scrollRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
+
+    // Mark messages as read
+    useEffect(() => {
+        const markRead = async () => {
+            await supabase
+                .from('messages')
+                .update({ is_read: true })
+                .eq('ride_request_id', requestId)
+                .eq('receiver_id', currentUserId)
+                .eq('is_read', false)
+        }
+        markRead()
+    }, [requestId, currentUserId, messages, supabase])
 
     // Scroll to bottom function
     const scrollToBottom = useCallback((smooth = true) => {
@@ -115,6 +130,8 @@ export default function ChatWindow({
         inputRef.current?.focus()
 
         try {
+            // Append receiverId to formData
+            formData.append('receiverId', receiverId)
             await sendMessage(formData)
         } catch (error) {
             console.error('Failed to send message:', error)
