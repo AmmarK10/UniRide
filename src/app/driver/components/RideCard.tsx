@@ -37,7 +37,14 @@ export default function RideCard({ ride }: RideCardProps) {
         if (!window.confirm('Are you sure you want to delete this ride? This cannot be undone.')) return
 
         startTransition(async () => {
-            await supabase.from('rides').delete().eq('id', ride.id)
+            try {
+                const { error } = await supabase.from('rides').delete().eq('id', ride.id)
+                if (error) throw error
+                console.log("REALTIME_SYNC_SUCCESS", { id: ride.id, action: 'DELETE' })
+            } catch (err) {
+                console.error("Failed to delete ride:", err)
+                alert("Failed to delete ride. Please try again.")
+            }
         })
     }
 

@@ -55,6 +55,7 @@ export default function DashboardClient({
             `)
             .in('ride_id', updatedRides?.map(r => r.id) || [])
             .in('status', ['pending', 'accepted'])
+            .neq('hidden_by_driver', true)
             .order('created_at', { ascending: false })
 
         if (updatedRequests) {

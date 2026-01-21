@@ -36,6 +36,7 @@ export default async function DriverDashboard() {
         `)
         .in('ride_id', rides?.map(r => r.id) || [])
         .in('status', ['pending', 'accepted'])
+        .neq('hidden_by_driver', true) // Filter out hidden requests
         .order('created_at', { ascending: false })
 
     // Separate pending and accepted for display

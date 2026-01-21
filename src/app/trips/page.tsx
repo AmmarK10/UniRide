@@ -30,6 +30,7 @@ export default async function MyTripsPage() {
             )
         `)
         .eq('passenger_id', user.id)
+        .neq('hidden_by_passenger', true)
         .order('created_at', { ascending: false })
 
     return (

@@ -72,10 +72,17 @@ export default function RequestCard({ request, onOptimisticUpdate }: RequestCard
     const handleArchive = async (e: React.MouseEvent) => {
         e.stopPropagation()
         e.preventDefault()
-        await supabase
-            .from('ride_requests')
-            .update({ hidden_by_driver: true })
-            .eq('id', request.id)
+        try {
+            const { error } = await supabase
+                .from('ride_requests')
+                .update({ hidden_by_driver: true })
+                .eq('id', request.id)
+
+            if (error) throw error
+            console.log("REALTIME_SYNC_SUCCESS", { id: request.id, action: 'HIDE_DRIVER' })
+        } catch (err) {
+            console.error("Failed to archive request:", err)
+        }
     }
 
     return (

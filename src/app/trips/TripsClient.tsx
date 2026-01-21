@@ -44,6 +44,7 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
                 )
             `)
             .eq('passenger_id', userId)
+            .neq('hidden_by_passenger', true)
             .order('created_at', { ascending: false })
 
         if (updatedRequests) {

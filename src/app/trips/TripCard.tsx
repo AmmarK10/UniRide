@@ -23,10 +23,17 @@ export default function TripCard({ request, userId }: TripCardProps) {
     const supabase = createClient()
 
     const handleArchive = async () => {
-        await supabase
-            .from('ride_requests')
-            .update({ hidden_by_passenger: true })
-            .eq('id', request.id)
+        try {
+            const { error } = await supabase
+                .from('ride_requests')
+                .update({ hidden_by_passenger: true })
+                .eq('id', request.id)
+
+            if (error) throw error
+            console.log("REALTIME_SYNC_SUCCESS", { id: request.id, action: 'HIDE_PASSENGER' })
+        } catch (err) {
+            console.error("Failed to archive request:", err)
+        }
     }
 
     // Fetch and Subscribe to unread messages for this specific request
