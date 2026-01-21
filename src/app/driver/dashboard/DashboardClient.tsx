@@ -94,36 +94,37 @@ export default function DashboardClient({
     }, [])
 
     useEffect(() => {
-        const { data: { user } } = supabase.auth.getUser() as any // Optimistic or handled in setup
-
-        // Subscribe to ride_requests changes
-        const requestsChannel = supabase
-            .channel('driver_requests')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'ride_requests'
-                },
-                (payload) => {
-                    console.log('REALTIME_HIDE_EVENT (Request):', payload)
-                    if (payload.new.hidden_by_driver) {
-                        animateAndRemoveRequest(payload.new.id)
-                    } else {
-                        // Regular status update
-                        refreshData()
-                    }
-                }
-            )
-            .subscribe()
-
-        // Subscribe to rides changes (INSERT & DELETE)
+        let requestsChannel: any;
         let ridesChannel: any;
 
-        const setupRidesListener = async () => {
+        const setupRealtime = async () => {
             const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
+            if (!user) {
+                console.error("DashboardClient: No user found for realtime")
+                return
+            }
+
+            // Subscribe to ride_requests changes
+            requestsChannel = supabase
+                .channel('driver_requests')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'ride_requests'
+                    },
+                    (payload) => {
+                        console.log('REALTIME_EVENT_RECEIVED (Request):', payload)
+                        if (payload.new.hidden_by_driver) {
+                            animateAndRemoveRequest(payload.new.id)
+                        } else {
+                            // Regular status update
+                            refreshData()
+                        }
+                    }
+                )
+                .subscribe()
 
             ridesChannel = supabase
                 .channel('driver_rides_sub')
@@ -136,7 +137,7 @@ export default function DashboardClient({
                         filter: `driver_id=eq.${user.id}`
                     },
                     (payload) => {
-                        console.log("REALTIME: New Ride Added!", payload)
+                        console.log("REALTIME_EVENT_RECEIVED (New Ride):", payload)
                         refreshData()
                     }
                 )
@@ -149,17 +150,17 @@ export default function DashboardClient({
                         filter: `driver_id=eq.${user.id}`
                     },
                     (payload) => {
-                        console.log("REALTIME_HIDE_EVENT (Ride):", payload)
+                        console.log("REALTIME_EVENT_RECEIVED (Delete Ride):", payload)
                         animateAndRemoveRide(payload.old.id)
                     }
                 )
                 .subscribe()
         }
 
-        setupRidesListener()
+        setupRealtime()
 
         return () => {
-            supabase.removeChannel(requestsChannel)
+            if (requestsChannel) supabase.removeChannel(requestsChannel)
             if (ridesChannel) supabase.removeChannel(ridesChannel)
         }
     }, [supabase, refreshData, animateAndRemoveRide, animateAndRemoveRequest])

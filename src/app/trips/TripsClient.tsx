@@ -74,8 +74,8 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
                     filter: `passenger_id=eq.${userId}`
                 },
                 (payload: any) => {
-                    console.log("REALTIME: Request Status Updated:", payload.new?.status)
-                    console.log("REALTIME_HIDE_EVENT (Passenger):", payload)
+                    console.log("REALTIME_EVENT_RECEIVED (Request Status Updated):", payload.new?.status)
+                    console.log("REALTIME_EVENT_RECEIVED (Passenger Hide):", payload)
 
                     if (payload.new.hidden_by_passenger) {
                         animateAndRemoveRequest(payload.new.id)

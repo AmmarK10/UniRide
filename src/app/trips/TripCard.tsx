@@ -68,6 +68,8 @@ export default function TripCard({ request, userId }: TripCardProps) {
             )
             .subscribe()
 
+
+
         return () => {
             supabase.removeChannel(channel)
         }
