@@ -89,15 +89,45 @@ export default function DashboardClient({
                 },
                 (payload) => {
                     console.log('Realtime request update:', payload)
-                    // Simple strategy: refresh all data on any change
-                    // In a larger app, we'd merge changes partially
                     refreshData()
                 }
             )
             .subscribe()
 
+        // Subscribe to rides changes (New Rides)
+        // We need the user ID for the filter. Assuming profile.id or fetching it.
+        // If profile.id is not available immediately, we might miss it. 
+        // But let's assume valid profile for dashboard.
+
+        let ridesChannel: any;
+
+        const setupRidesListener = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            ridesChannel = supabase
+                .channel('driver_rides_new')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'rides',
+                        filter: `driver_id=eq.${user.id}`
+                    },
+                    (payload) => {
+                        console.log("REALTIME: New Ride Added!", payload)
+                        refreshData()
+                    }
+                )
+                .subscribe()
+        }
+
+        setupRidesListener()
+
         return () => {
             supabase.removeChannel(requestsChannel)
+            if (ridesChannel) supabase.removeChannel(ridesChannel)
         }
     }, [supabase, refreshData])
 

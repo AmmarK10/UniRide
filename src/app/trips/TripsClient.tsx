@@ -24,39 +24,6 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
     const supabase = createClient()
 
     // --- REQUIREMENT 1 & 4: Top-Level Effect, No Guards ---
-    useEffect(() => {
-        // --- REQUIREMENT 2: LOUD LOGGING ---
-        console.log("CRITICAL: Starting Ride Status Listener...")
-
-        const channel = supabase
-            .channel('global_ride_monitor')
-            .on(
-                'postgres_changes',
-                // --- REQUIREMENT 3: subscribe to ALL changes, NO FILTER (as per snippet) ---
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'ride_requests'
-                },
-                (payload) => {
-                    console.log("EVENT RECEIVED:", payload)
-
-                    // --- REQUIREMENT 3: Global Refresh (Hard Reload) ---
-                    console.log("!!! TRIGGERING HARD RELOAD !!!")
-                    window.location.reload()
-                }
-            )
-            .subscribe((status) => {
-                // --- REQUIREMENT 2: LOUD LOGGING ---
-                console.log("CRITICAL: Ride Sub Status is:", status)
-            })
-
-        return () => {
-            console.log("CRITICAL: Cleaning up listener")
-            supabase.removeChannel(channel)
-        }
-    }, [supabase]) // Removed userId dependency to be perfectly 'global' and isolated
-
     const refreshRequests = useCallback(async () => {
         const { data: updatedRequests } = await supabase
             .from('ride_requests')
@@ -83,6 +50,40 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
             setRequests(updatedRequests)
         }
     }, [supabase, userId])
+
+    useEffect(() => {
+        // --- REQUIREMENT 2: LOUD LOGGING ---
+        console.log("CRITICAL: Starting Ride Status Listener...")
+
+        const channel = supabase
+            .channel('passenger_requests_updates')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'ride_requests',
+                    filter: `passenger_id=eq.${userId}`
+                },
+                (payload: any) => {
+                    console.log("REALTIME: Request Status Updated:", payload.new?.status)
+
+                    // Trigger re-fetch to update UI (Green badge etc.)
+                    refreshRequests()
+
+                    // Fallback: If state update isn't enough, we could reload:
+                    // window.location.reload()
+                }
+            )
+            .subscribe((status) => {
+                console.log("CRITICAL: Ride Sub Status is:", status)
+            })
+
+        return () => {
+            console.log("CRITICAL: Cleaning up listener")
+            supabase.removeChannel(channel)
+        }
+    }, [supabase, userId, refreshRequests])
 
     // Separate into upcoming and past
     const now = new Date()
