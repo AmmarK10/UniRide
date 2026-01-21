@@ -51,6 +51,14 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
         }
     }, [supabase, userId])
 
+    // Realtime Animation Helper
+    const animateAndRemoveRequest = useCallback((requestId: string) => {
+        setRequests(prev => prev.map((r: any) => r.id === requestId ? { ...r, isDeleting: true } : r))
+        setTimeout(() => {
+            setRequests(prev => prev.filter((r: any) => r.id !== requestId))
+        }, 500)
+    }, [])
+
     useEffect(() => {
         // --- REQUIREMENT 2: LOUD LOGGING ---
         console.log("CRITICAL: Starting Ride Status Listener...")
@@ -67,12 +75,14 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
                 },
                 (payload: any) => {
                     console.log("REALTIME: Request Status Updated:", payload.new?.status)
+                    console.log("REALTIME_HIDE_EVENT (Passenger):", payload)
 
-                    // Trigger re-fetch to update UI (Green badge etc.)
-                    refreshRequests()
-
-                    // Fallback: If state update isn't enough, we could reload:
-                    // window.location.reload()
+                    if (payload.new.hidden_by_passenger) {
+                        animateAndRemoveRequest(payload.new.id)
+                    } else {
+                        // Trigger re-fetch to update UI (Green badge etc.)
+                        refreshRequests()
+                    }
                 }
             )
             .subscribe((status) => {
@@ -83,7 +93,7 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
             console.log("CRITICAL: Cleaning up listener")
             supabase.removeChannel(channel)
         }
-    }, [supabase, userId, refreshRequests])
+    }, [supabase, userId, refreshRequests, animateAndRemoveRequest])
 
     // Separate into upcoming and past
     const now = new Date()
@@ -157,7 +167,9 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
                         {upcomingRequests.length > 0 ? (
                             <div className="grid gap-4">
                                 {upcomingRequests.map((req: any) => (
-                                    <TripCard key={req.id} request={req} userId={userId} />
+                                    <div key={req.id} className={`transition-all duration-500 ${req.isDeleting ? 'opacity-0 scale-95 h-0 overflow-hidden' : 'opacity-100'}`}>
+                                        <TripCard request={req} userId={userId} />
+                                    </div>
                                 ))}
                             </div>
                         ) : (
@@ -169,7 +181,9 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
                         {pastRequests.length > 0 ? (
                             <div className="grid gap-4">
                                 {pastRequests.map((req: any) => (
-                                    <TripCard key={req.id} request={req} userId={userId} />
+                                    <div key={req.id} className={`transition-all duration-500 ${req.isDeleting ? 'opacity-0 scale-95 h-0 overflow-hidden' : 'opacity-100'}`}>
+                                        <TripCard request={req} userId={userId} />
+                                    </div>
                                 ))}
                             </div>
                         ) : (

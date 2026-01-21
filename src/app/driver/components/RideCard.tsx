@@ -1,12 +1,10 @@
-'use client'
-
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { MapPin, Clock, Users, Trash2, CalendarDays, Loader2 } from 'lucide-react'
-import { cancelRide } from '../actions'
 import { useState, useTransition } from 'react'
 import { formatTimePKT, formatDatePKT } from '@/lib/timezone'
+import { createClient } from '@/utils/supabase/client'
 
 type RideCardProps = {
     ride: {
@@ -23,6 +21,7 @@ type RideCardProps = {
 
 export default function RideCard({ ride }: RideCardProps) {
     const [isPending, startTransition] = useTransition()
+    const supabase = createClient()
 
     const statusColors = {
         active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -34,9 +33,11 @@ export default function RideCard({ ride }: RideCardProps) {
     const statusColor = statusColors[ride.status as keyof typeof statusColors] || statusColors.active
     const isFull = ride.available_seats === 0
 
-    const handleCancel = () => {
+    const handleDelete = () => {
+        if (!window.confirm('Are you sure you want to delete this ride? This cannot be undone.')) return
+
         startTransition(async () => {
-            await cancelRide(ride.id)
+            await supabase.from('rides').delete().eq('id', ride.id)
         })
     }
 
@@ -49,9 +50,9 @@ export default function RideCard({ ride }: RideCardProps) {
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2 text-lg font-semibold text-slate-900">
                                 <MapPin className="h-5 w-5 text-indigo-500" />
-                                <span>{ride.origin_location}</span>
+                                <span className="truncate max-w-[120px] sm:max-w-[200px]">{ride.origin_location}</span>
                                 <span className="text-slate-300">→</span>
-                                <span className="text-indigo-600">{ride.destination_university}</span>
+                                <span className="text-indigo-600 truncate max-w-[120px] sm:max-w-[200px]">{ride.destination_university}</span>
                             </div>
                         </div>
 
@@ -105,9 +106,10 @@ export default function RideCard({ ride }: RideCardProps) {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={handleCancel}
+                            onClick={handleDelete}
                             disabled={isPending}
                             className="text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete Ride"
                         >
                             {isPending ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />

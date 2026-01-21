@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
-    MapPin, Clock, MessageCircle, CheckCircle, XCircle, Clock3, Ticket
+    MapPin, Clock, MessageCircle, CheckCircle, XCircle, Clock3, Ticket, Trash2
 } from 'lucide-react'
 import { format } from 'date-fns'
 import Link from 'next/link'
@@ -21,6 +21,13 @@ type TripCardProps = {
 export default function TripCard({ request, userId }: TripCardProps) {
     const [unreadCount, setUnreadCount] = useState(0)
     const supabase = createClient()
+
+    const handleArchive = async () => {
+        await supabase
+            .from('ride_requests')
+            .update({ hidden_by_passenger: true })
+            .eq('id', request.id)
+    }
 
     // Fetch and Subscribe to unread messages for this specific request
     useEffect(() => {
@@ -99,7 +106,7 @@ export default function TripCard({ request, userId }: TripCardProps) {
         .toUpperCase() || '?'
 
     return (
-        <Card className="border border-slate-200 bg-white hover:shadow-md transition-all duration-300 rounded-xl overflow-hidden">
+        <Card className="border border-slate-200 bg-white hover:shadow-md transition-all duration-300 rounded-xl overflow-hidden group">
             <CardContent className="p-0">
                 {/* Status Header */}
                 <div className={`px-5 py-3 flex items-center justify-between ${request.status === 'accepted'
@@ -110,9 +117,20 @@ export default function TripCard({ request, userId }: TripCardProps) {
                         <StatusIcon className="h-3 w-3" />
                         {status.label}
                     </Badge>
-                    <span className="text-xs text-slate-500">
-                        {format(new Date(request.created_at), 'MMM d, yyyy')}
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500">
+                            {format(new Date(request.created_at), 'MMM d, yyyy')}
+                        </span>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleArchive}
+                            className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50 -mr-2"
+                            title="Archive / Hide"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="p-5">

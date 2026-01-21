@@ -76,29 +76,49 @@ export default function DashboardClient({
         }
     }
 
+    // Realtime Animation Handlers
+    const animateAndRemoveRide = useCallback((rideId: string) => {
+        setRides(prev => prev.map(r => r.id === rideId ? { ...r, isDeleting: true } : r))
+        setTimeout(() => {
+            setRides(prev => prev.filter(r => r.id !== rideId))
+        }, 500)
+    }, [])
+
+    const animateAndRemoveRequest = useCallback((requestId: string) => {
+        setPendingRequests(prev => prev.map(r => r.id === requestId ? { ...r, isDeleting: true } : r))
+        setAcceptedRequests(prev => prev.map(r => r.id === requestId ? { ...r, isDeleting: true } : r))
+        setTimeout(() => {
+            setPendingRequests(prev => prev.filter(r => r.id !== requestId))
+            setAcceptedRequests(prev => prev.filter(r => r.id !== requestId))
+        }, 500)
+    }, [])
+
     useEffect(() => {
+        const { data: { user } } = supabase.auth.getUser() as any // Optimistic or handled in setup
+
         // Subscribe to ride_requests changes
         const requestsChannel = supabase
             .channel('driver_requests')
             .on(
                 'postgres_changes',
                 {
-                    event: '*',
+                    event: 'UPDATE',
                     schema: 'public',
                     table: 'ride_requests'
                 },
                 (payload) => {
-                    console.log('Realtime request update:', payload)
-                    refreshData()
+                    console.log('REALTIME_HIDE_EVENT (Request):', payload)
+                    if (payload.new.hidden_by_driver) {
+                        animateAndRemoveRequest(payload.new.id)
+                    } else {
+                        // Regular status update
+                        refreshData()
+                    }
                 }
             )
             .subscribe()
 
-        // Subscribe to rides changes (New Rides)
-        // We need the user ID for the filter. Assuming profile.id or fetching it.
-        // If profile.id is not available immediately, we might miss it. 
-        // But let's assume valid profile for dashboard.
-
+        // Subscribe to rides changes (INSERT & DELETE)
         let ridesChannel: any;
 
         const setupRidesListener = async () => {
@@ -106,7 +126,7 @@ export default function DashboardClient({
             if (!user) return
 
             ridesChannel = supabase
-                .channel('driver_rides_new')
+                .channel('driver_rides_sub')
                 .on(
                     'postgres_changes',
                     {
@@ -120,6 +140,19 @@ export default function DashboardClient({
                         refreshData()
                     }
                 )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'DELETE',
+                        schema: 'public',
+                        table: 'rides',
+                        filter: `driver_id=eq.${user.id}`
+                    },
+                    (payload) => {
+                        console.log("REALTIME_HIDE_EVENT (Ride):", payload)
+                        animateAndRemoveRide(payload.old.id)
+                    }
+                )
                 .subscribe()
         }
 
@@ -129,7 +162,7 @@ export default function DashboardClient({
             supabase.removeChannel(requestsChannel)
             if (ridesChannel) supabase.removeChannel(ridesChannel)
         }
-    }, [supabase, refreshData])
+    }, [supabase, refreshData, animateAndRemoveRide, animateAndRemoveRequest])
 
     const activeRidesCount = rides.filter(r => r.status === 'active').length
     const pendingRequestsCount = pendingRequests.length
@@ -223,7 +256,9 @@ export default function DashboardClient({
                         {rides.length > 0 ? (
                             <div className="space-y-3">
                                 {rides.map(ride => (
-                                    <RideCard key={ride.id} ride={ride} />
+                                    <div key={ride.id} className={`transition-all duration-500 ${ride.isDeleting ? 'opacity-0 scale-95 h-0 overflow-hidden' : 'opacity-100'}`}>
+                                        <RideCard ride={ride} />
+                                    </div>
                                 ))}
                             </div>
                         ) : (
@@ -260,11 +295,12 @@ export default function DashboardClient({
                             {pendingRequests.length > 0 ? (
                                 <div className="space-y-3">
                                     {pendingRequests.map((req: any) => (
-                                        <RequestCard
-                                            key={req.id}
-                                            request={req}
-                                            onOptimisticUpdate={handleOptimisticUpdate}
-                                        />
+                                        <div key={req.id} className={`transition-all duration-500 ${req.isDeleting ? 'opacity-0 scale-95 h-0 overflow-hidden' : 'opacity-100'}`}>
+                                            <RequestCard
+                                                request={req}
+                                                onOptimisticUpdate={handleOptimisticUpdate}
+                                            />
+                                        </div>
                                     ))}
                                 </div>
                             ) : (
@@ -293,7 +329,9 @@ export default function DashboardClient({
                                 </h2>
                                 <div className="space-y-3">
                                     {acceptedRequests.map((req: any) => (
-                                        <RequestCard key={req.id} request={req} />
+                                        <div key={req.id} className={`transition-all duration-500 ${req.isDeleting ? 'opacity-0 scale-95 h-0 overflow-hidden' : 'opacity-100'}`}>
+                                            <RequestCard request={req} />
+                                        </div>
                                     ))}
                                 </div>
                             </div>

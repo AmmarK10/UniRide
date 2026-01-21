@@ -4,11 +4,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { MapPin, Clock, Check, X, MessageCircle, CheckCircle, Loader2 } from 'lucide-react'
+import { MapPin, Clock, Check, X, MessageCircle, CheckCircle, Loader2, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { updateRequestStatus } from '../actions'
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
+import { createClient } from '@/utils/supabase/client'
 
 type RequestCardProps = {
     request: {
@@ -31,6 +32,7 @@ type RequestCardProps = {
 export default function RequestCard({ request, onOptimisticUpdate }: RequestCardProps) {
     const [isPending, startTransition] = useTransition()
     const [pendingAction, setPendingAction] = useState<'accept' | 'reject' | null>(null)
+    const supabase = createClient()
 
     const initials = request.profiles.full_name
         ?.split(' ')
@@ -67,10 +69,30 @@ export default function RequestCard({ request, onOptimisticUpdate }: RequestCard
         })
     }
 
+    const handleArchive = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+        e.preventDefault()
+        await supabase
+            .from('ride_requests')
+            .update({ hidden_by_driver: true })
+            .eq('id', request.id)
+    }
+
     return (
-        <Card className={`border bg-white hover:shadow-md transition-all duration-300 rounded-xl overflow-hidden ${isAccepted ? 'border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-white' : 'border-slate-200'
+        <Card className={`relative border bg-white hover:shadow-md transition-all duration-300 rounded-xl overflow-hidden group ${isAccepted ? 'border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-white' : 'border-slate-200'
             }`}>
             <CardContent className="p-5">
+                {/* Archive Button */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleArchive}
+                    className="absolute top-2 right-2 h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Archive Request"
+                >
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+
                 <div className="flex items-start gap-4">
                     {/* Avatar */}
                     <Avatar className={`h-12 w-12 border-2 ${isAccepted ? 'border-emerald-200' : 'border-indigo-100'}`}>
