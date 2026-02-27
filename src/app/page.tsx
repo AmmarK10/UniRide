@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Car, MapPin, Ticket, LogOut, User, LayoutDashboard, Search } from 'lucide-react'
 import SearchBar from './components/SearchBar'
 import AvailableRideCard from './components/AvailableRideCard'
-import MyRideCard from './components/MyRideCard'
+import MyRidesSidebar from './components/MyRidesSidebar'
 import RefreshButton from '@/components/RefreshButton'
 
 export const dynamic = 'force-dynamic'
@@ -215,31 +215,8 @@ export default async function Home({
             )}
           </div>
 
-          {/* Sidebar: My Rides */}
-          <div className="lg:col-span-4 space-y-6">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <LayoutDashboard className="h-5 w-5 text-indigo-600" />
-              My Rides
-            </h2>
-
-            {userRequests && userRequests.length > 0 ? (
-              <div className="space-y-4">
-                {userRequests.map((req: any) => (
-                  <MyRideCard key={req.id} request={req} />
-                ))}
-              </div>
-            ) : (
-              <Card className="bg-white border-slate-200">
-                <CardContent className="py-8 text-center">
-                  <Ticket className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-                  <h3 className="font-medium text-slate-900">No active trips</h3>
-                  <p className="text-sm text-slate-500 mt-1">
-                    You haven't requested any rides yet.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          {/* Sidebar: My Rides (Client Component with Realtime) */}
+          <MyRidesSidebar initialRequests={userRequests || []} userId={user.id} />
 
         </div>
       </main>

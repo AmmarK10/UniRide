@@ -17,9 +17,10 @@ type RideCardProps = {
         recurrence_pattern?: string
         status: string
     }
+    onDelete?: (rideId: string) => void
 }
 
-export default function RideCard({ ride }: RideCardProps) {
+export default function RideCard({ ride, onDelete }: RideCardProps) {
     const [isPending, startTransition] = useTransition()
     const supabase = createClient()
 
@@ -35,6 +36,9 @@ export default function RideCard({ ride }: RideCardProps) {
 
     const handleDelete = () => {
         if (!window.confirm('Are you sure you want to delete this ride? This cannot be undone.')) return
+
+        // Optimistic removal — remove from UI immediately
+        if (onDelete) onDelete(ride.id)
 
         startTransition(async () => {
             try {

@@ -259,7 +259,7 @@ export default function DashboardClient({
                             <div className="space-y-3">
                                 {rides.map(ride => (
                                     <div key={ride.id} className={`transition-all duration-500 ${ride.isDeleting ? 'opacity-0 scale-95 h-0 overflow-hidden' : 'opacity-100'}`}>
-                                        <RideCard ride={ride} />
+                                        <RideCard ride={ride} onDelete={animateAndRemoveRide} />
                                     </div>
                                 ))}
                             </div>

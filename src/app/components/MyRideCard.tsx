@@ -4,10 +4,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { MessageCircle, Clock, MapPin, CheckCircle, Loader2 } from 'lucide-react'
+import { MessageCircle, Clock, MapPin, CheckCircle, Loader2, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDateTimePKT } from '@/lib/timezone'
 import { getUniversityLabel } from '@/lib/constants'
+import { createClient } from '@/utils/supabase/client'
+import { useState } from 'react'
 
 type MyRideCardProps = {
     request: {
@@ -23,11 +25,14 @@ type MyRideCardProps = {
             }
         }
     }
+    onDelete?: (requestId: string) => void
 }
 
-export default function MyRideCard({ request }: MyRideCardProps) {
+export default function MyRideCard({ request, onDelete }: MyRideCardProps) {
     const isAccepted = request.status === 'accepted'
     const isPending = request.status === 'pending'
+    const supabase = createClient()
+    const [isDeleting, setIsDeleting] = useState(false)
 
     // Extract driver initials
     const driverInitials = request.rides?.driver?.full_name
@@ -35,6 +40,25 @@ export default function MyRideCard({ request }: MyRideCardProps) {
         .map((n: string) => n[0])
         .join('')
         .toUpperCase() || '?'
+
+    const handleDelete = async () => {
+        setIsDeleting(true)
+        // Optimistic removal
+        if (onDelete) onDelete(request.id)
+
+        try {
+            const { error } = await supabase
+                .from('ride_requests')
+                .update({ hidden_by_passenger: true })
+                .eq('id', request.id)
+
+            if (error) throw error
+            console.log("REALTIME_SYNC_SUCCESS", { id: request.id, action: 'HIDE_PASSENGER' })
+        } catch (err) {
+            console.error("Failed to hide ride request:", err)
+            setIsDeleting(false)
+        }
+    }
 
     return (
         <Card className={`transition-all duration-300 hover:shadow-md ${isAccepted ? 'border-emerald-200 bg-emerald-50/30' : 'border-amber-200 bg-amber-50/30'
@@ -45,8 +69,8 @@ export default function MyRideCard({ request }: MyRideCardProps) {
                     <div className="flex items-center gap-3">
                         <Avatar className={`h-10 w-10 border-2 ${isAccepted ? 'border-emerald-200' : 'border-amber-200'}`}>
                             <AvatarFallback className={`text-white text-sm font-medium ${isAccepted
-                                    ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                                    : 'bg-gradient-to-br from-amber-500 to-orange-600'
+                                ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                                : 'bg-gradient-to-br from-amber-500 to-orange-600'
                                 }`}>
                                 {driverInitials}
                             </AvatarFallback>
@@ -60,22 +84,38 @@ export default function MyRideCard({ request }: MyRideCardProps) {
                             </p>
                         </div>
                     </div>
-                    <Badge variant="secondary" className={`border-0 ${isAccepted
+                    <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className={`border-0 ${isAccepted
                             ? 'bg-emerald-100 text-emerald-700'
                             : 'bg-amber-100 text-amber-700'
-                        }`}>
-                        {isAccepted ? (
-                            <div className="flex items-center gap-1">
-                                <CheckCircle className="h-3 w-3" />
-                                Accepted
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Pending
-                            </div>
-                        )}
-                    </Badge>
+                            }`}>
+                            {isAccepted ? (
+                                <div className="flex items-center gap-1">
+                                    <CheckCircle className="h-3 w-3" />
+                                    Accepted
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Pending
+                                </div>
+                            )}
+                        </Badge>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                            title="Remove ride"
+                        >
+                            {isDeleting ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Route Info */}
@@ -115,3 +155,4 @@ export default function MyRideCard({ request }: MyRideCardProps) {
         </Card>
     )
 }
+
