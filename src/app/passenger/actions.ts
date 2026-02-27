@@ -53,3 +53,20 @@ export async function cancelRequest(requestId: string) {
 
     revalidatePath('/trips')
 }
+
+export async function hideRideRequest(requestId: string) {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('ride_requests')
+        .update({ hidden_by_passenger: true })
+        .eq('id', requestId)
+
+    if (error) {
+        console.error('Hide ride request error:', error)
+        throw new Error(error.message)
+    }
+
+    revalidatePath('/')
+    revalidatePath('/trips')
+}

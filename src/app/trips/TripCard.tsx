@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { cn } from '@/lib/utils'
+import { hideRideRequest } from '../passenger/actions'
 
 type TripCardProps = {
     request: any
@@ -24,13 +25,8 @@ export default function TripCard({ request, userId }: TripCardProps) {
 
     const handleArchive = async () => {
         try {
-            const { error } = await supabase
-                .from('ride_requests')
-                .update({ hidden_by_passenger: true })
-                .eq('id', request.id)
-
-            if (error) throw error
-            console.log("REALTIME_SYNC_SUCCESS", { id: request.id, action: 'HIDE_PASSENGER' })
+            await hideRideRequest(request.id)
+            console.log("HIDE_SUCCESS", { id: request.id })
         } catch (err) {
             console.error("Failed to archive request:", err)
         }

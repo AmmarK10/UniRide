@@ -91,3 +91,27 @@ export async function updateRequestStatus(requestId: string, status: 'accepted' 
 
     revalidatePath('/driver/dashboard')
 }
+
+export async function deleteRide(rideId: string): Promise<void> {
+    const supabase = await createClient()
+
+    // First delete all associated ride_requests
+    await supabase
+        .from('ride_requests')
+        .delete()
+        .eq('ride_id', rideId)
+
+    // Then delete the ride itself
+    const { error } = await supabase
+        .from('rides')
+        .delete()
+        .eq('id', rideId)
+
+    if (error) {
+        console.error('Delete ride error:', error)
+        throw new Error(error.message)
+    }
+
+    revalidatePath('/driver/dashboard')
+    revalidatePath('/')
+}

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Car, MapPin, Ticket, LogOut, User, LayoutDashboard, Search } from 'lucide-react'
 import SearchBar from './components/SearchBar'
-import AvailableRideCard from './components/AvailableRideCard'
+import AvailableRidesSection from './components/AvailableRidesSection'
 import MyRidesSidebar from './components/MyRidesSidebar'
 import RefreshButton from '@/components/RefreshButton'
 
@@ -175,45 +175,12 @@ export default async function Home({
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-          {/* Main Content: Available Rides */}
-          <div className="lg:col-span-8 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Search className="h-5 w-5 text-indigo-600" />
-                Available Rides
-              </h2>
-              {(origin || time) && (
-                <Link href="/">
-                  <Button variant="outline" size="sm">Clear Filters</Button>
-                </Link>
-              )}
-            </div>
-
-            {availableRides.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {availableRides.map((ride: any) => (
-                  <AvailableRideCard key={ride.id} ride={ride} />
-                ))}
-              </div>
-            ) : (
-              <Card className="border border-dashed border-slate-300 bg-slate-50/50 rounded-2xl">
-                <CardContent className="py-12 text-center">
-                  <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 mb-4">
-                    <Car className="h-8 w-8 text-slate-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                    No rides available
-                  </h3>
-                  <p className="text-slate-500 max-w-sm mx-auto mb-6 text-sm">
-                    {origin
-                      ? `No rides matches for "${origin}".`
-                      : 'There are no other rides available right now.'}
-                  </p>
-                  <RefreshButton />
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          {/* Main Content: Available Rides (Client Component with Realtime) */}
+          <AvailableRidesSection
+            initialRides={availableRides}
+            requestedRideIds={requestedRideIds}
+            userId={user.id}
+          />
 
           {/* Sidebar: My Rides (Client Component with Realtime) */}
           <MyRidesSidebar initialRequests={userRequests || []} userId={user.id} />

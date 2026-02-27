@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { MapPin, Clock, Users, Trash2, CalendarDays, Loader2 } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { formatTimePKT, formatDatePKT } from '@/lib/timezone'
-import { createClient } from '@/utils/supabase/client'
+import { deleteRide } from '../actions'
 
 type RideCardProps = {
     ride: {
@@ -22,7 +22,6 @@ type RideCardProps = {
 
 export default function RideCard({ ride, onDelete }: RideCardProps) {
     const [isPending, startTransition] = useTransition()
-    const supabase = createClient()
 
     const statusColors = {
         active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -42,9 +41,8 @@ export default function RideCard({ ride, onDelete }: RideCardProps) {
 
         startTransition(async () => {
             try {
-                const { error } = await supabase.from('rides').delete().eq('id', ride.id)
-                if (error) throw error
-                console.log("REALTIME_SYNC_SUCCESS", { id: ride.id, action: 'DELETE' })
+                await deleteRide(ride.id)
+                console.log("DELETE_SUCCESS", { id: ride.id })
             } catch (err) {
                 console.error("Failed to delete ride:", err)
                 alert("Failed to delete ride. Please try again.")
