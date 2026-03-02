@@ -125,6 +125,18 @@ export default function DashboardClient({
                         }
                     }
                 )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'DELETE',
+                        schema: 'public',
+                        table: 'ride_requests'
+                    },
+                    (payload) => {
+                        console.log("REALTIME_EVENT_RECEIVED (Delete Passenger Request):", payload)
+                        animateAndRemoveRequest(payload.old.id)
+                    }
+                )
                 .subscribe()
 
             ridesChannel = supabase

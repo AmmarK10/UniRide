@@ -115,3 +115,19 @@ export async function deleteRide(rideId: string): Promise<void> {
     revalidatePath('/driver/dashboard')
     revalidatePath('/')
 }
+
+export async function deletePassengerRequest(requestId: string): Promise<void> {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('ride_requests')
+        .delete()
+        .eq('id', requestId)
+
+    if (error) {
+        console.error('Delete passenger request error:', error)
+        throw new Error(error.message)
+    }
+
+    revalidatePath('/driver/dashboard')
+}

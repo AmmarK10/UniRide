@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { MapPin, Clock, Check, X, MessageCircle, CheckCircle, Loader2, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
-import { updateRequestStatus } from '../actions'
+import { updateRequestStatus, deletePassengerRequest } from '../actions'
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { createClient } from '@/utils/supabase/client'
@@ -73,15 +73,10 @@ export default function RequestCard({ request, onOptimisticUpdate }: RequestCard
         e.stopPropagation()
         e.preventDefault()
         try {
-            const { error } = await supabase
-                .from('ride_requests')
-                .update({ hidden_by_driver: true })
-                .eq('id', request.id)
-
-            if (error) throw error
-            console.log("REALTIME_SYNC_SUCCESS", { id: request.id, action: 'HIDE_DRIVER' })
+            await deletePassengerRequest(request.id)
+            console.log("REALTIME_SYNC_SUCCESS", { id: request.id, action: 'DELETE_PASSENGER' })
         } catch (err) {
-            console.error("Failed to archive request:", err)
+            console.error("Failed to delete passenger request:", err)
         }
     }
 
