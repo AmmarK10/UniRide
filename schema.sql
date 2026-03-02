@@ -111,7 +111,7 @@ create policy "Passengers can delete their own requests."
 -- 4. MESSAGES Table (Chat)
 create table messages (
   id uuid default uuid_generate_v4() primary key,
-  ride_request_id uuid references ride_requests(id) not null,
+  ride_request_id uuid references ride_requests(id) on delete cascade not null,
   sender_id uuid references profiles(id) not null,
   content text not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null

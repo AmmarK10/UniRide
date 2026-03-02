@@ -43,8 +43,6 @@ export default function MyRideCard({ request, onDelete }: MyRideCardProps) {
 
     const handleDelete = async () => {
         setIsDeleting(true)
-        // Optimistic removal
-        if (onDelete) onDelete(request.id)
 
         try {
             await deleteRideRequest(request.id)
