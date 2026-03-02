@@ -8,7 +8,8 @@ import { MessageCircle, Clock, MapPin, CheckCircle, Loader2, Trash2 } from 'luci
 import Link from 'next/link'
 import { formatDateTimePKT } from '@/lib/timezone'
 import { getUniversityLabel } from '@/lib/constants'
-import { hideRideRequest } from '../passenger/actions'
+import { hideRideRequest, deleteRideRequest } from '../passenger/actions'
+
 import { useState } from 'react'
 
 type MyRideCardProps = {
@@ -46,10 +47,10 @@ export default function MyRideCard({ request, onDelete }: MyRideCardProps) {
         if (onDelete) onDelete(request.id)
 
         try {
-            await hideRideRequest(request.id)
-            console.log("HIDE_SUCCESS", { id: request.id })
+            await deleteRideRequest(request.id)
+            console.log("DELETE_SUCCESS", { id: request.id })
         } catch (err) {
-            console.error("Failed to hide ride request:", err)
+            console.error("Failed to delete ride request:", err)
             setIsDeleting(false)
         }
     }

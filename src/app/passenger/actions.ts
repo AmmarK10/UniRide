@@ -70,3 +70,20 @@ export async function hideRideRequest(requestId: string) {
     revalidatePath('/')
     revalidatePath('/trips')
 }
+
+export async function deleteRideRequest(requestId: string) {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('ride_requests')
+        .delete()
+        .eq('id', requestId)
+
+    if (error) {
+        console.error('Delete ride request error:', error)
+        throw new Error(error.message)
+    }
+
+    revalidatePath('/')
+    revalidatePath('/trips')
+}

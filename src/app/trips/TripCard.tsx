@@ -12,7 +12,8 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { cn } from '@/lib/utils'
-import { hideRideRequest } from '../passenger/actions'
+import { hideRideRequest, deleteRideRequest } from '../passenger/actions'
+
 
 type TripCardProps = {
     request: any
@@ -25,10 +26,10 @@ export default function TripCard({ request, userId }: TripCardProps) {
 
     const handleArchive = async () => {
         try {
-            await hideRideRequest(request.id)
-            console.log("HIDE_SUCCESS", { id: request.id })
+            await deleteRideRequest(request.id)
+            console.log("DELETE_SUCCESS", { id: request.id })
         } catch (err) {
-            console.error("Failed to archive request:", err)
+            console.error("Failed to delete request:", err)
         }
     }
 

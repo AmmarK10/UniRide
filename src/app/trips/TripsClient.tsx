@@ -86,9 +86,23 @@ export default function TripsClient({ initialRequests, userId }: TripsClientProp
                     }
                 }
             )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'ride_requests',
+                    filter: `passenger_id=eq.${userId}`
+                },
+                (payload) => {
+                    console.log("REALTIME_EVENT_RECEIVED (Request Deleted):", payload)
+                    animateAndRemoveRequest(payload.old.id)
+                }
+            )
             .subscribe((status) => {
                 console.log("CRITICAL: Ride Sub Status is:", status)
             })
+
 
         return () => {
             console.log("CRITICAL: Cleaning up listener")

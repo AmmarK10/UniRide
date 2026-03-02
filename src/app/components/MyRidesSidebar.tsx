@@ -82,9 +82,23 @@ export default function MyRidesSidebar({ initialRequests, userId }: MyRidesSideb
                     refreshRequests()
                 }
             )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'ride_requests',
+                    filter: `passenger_id=eq.${userId}`
+                },
+                (payload) => {
+                    console.log("MY_RIDES_SIDEBAR: Delete ride request received", payload)
+                    animateAndRemoveRequest(payload.old.id)
+                }
+            )
             .subscribe((status) => {
                 console.log("MY_RIDES_SIDEBAR: Subscription status:", status)
             })
+
 
         return () => {
             supabase.removeChannel(channel)
