@@ -30,7 +30,17 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <UnreadProvider>
-          {children}
+          <div className="flex-1 flex flex-col min-h-screen">
+            {children}
+          </div>
+          <footer className="w-full py-6 mt-auto text-center border-t border-slate-200 bg-white">
+            <p className="text-sm text-slate-500 mb-1">
+              Contact this email in case of any bugs or flaws with the website:
+            </p>
+            <a href="mailto:uni.ride.nine@gmail.com" className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
+              uni.ride.nine@gmail.com
+            </a>
+          </footer>
           <DeveloperBadge />
         </UnreadProvider>
       </body>
