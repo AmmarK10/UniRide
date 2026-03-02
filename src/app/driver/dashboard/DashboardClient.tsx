@@ -111,6 +111,18 @@ export default function DashboardClient({
                 .on(
                     'postgres_changes',
                     {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'ride_requests'
+                    },
+                    (payload) => {
+                        console.log('REALTIME_EVENT_RECEIVED (New Passenger Request):', payload)
+                        refreshData()
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    {
                         event: 'UPDATE',
                         schema: 'public',
                         table: 'ride_requests'
