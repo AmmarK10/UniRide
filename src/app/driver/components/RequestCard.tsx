@@ -89,7 +89,7 @@ export default function RequestCard({ request, onOptimisticUpdate }: RequestCard
                     variant="ghost"
                     size="icon"
                     onClick={handleArchive}
-                    className="absolute top-2 right-2 h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 md:opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Archive Request"
                 >
                     <Trash2 className="h-4 w-4" />
