@@ -55,6 +55,12 @@ create policy "Drivers can update their own rides."
   on rides for update
   using ( auth.uid() = driver_id );
 
+-- Drivers can delete their own rides
+create policy "Drivers can delete their own rides."
+  on rides for delete
+  using ( auth.uid() = driver_id );
+
+
 -- 3. RIDE REQUESTS Table
 create table ride_requests (
   id uuid default uuid_generate_v4() primary key,
@@ -89,6 +95,17 @@ create policy "Drivers can update status of requests for their rides."
 create policy "Passengers can update their own requests."
   on ride_requests for update
   using ( auth.uid() = passenger_id );
+
+-- Drivers can delete requests associated with their rides (e.g., when deleting a ride)
+create policy "Drivers can delete requests for their rides."
+  on ride_requests for delete
+  using ( auth.uid() in (select driver_id from rides where id = ride_id) );
+
+-- Passengers can delete their own requests
+create policy "Passengers can delete their own requests."
+  on ride_requests for delete
+  using ( auth.uid() = passenger_id );
+
 
 
 -- 4. MESSAGES Table (Chat)
