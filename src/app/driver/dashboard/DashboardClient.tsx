@@ -105,51 +105,58 @@ export default function DashboardClient({
                 return
             }
 
+            const activeRideIds = rides.map(r => r.id).join(',')
+            const filterClause = activeRideIds ? `ride_id=in.(${activeRideIds})` : undefined
+
             // Subscribe to ride_requests changes
-            requestsChannel = supabase
-                .channel('driver_requests')
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'ride_requests'
-                    },
-                    (payload) => {
-                        console.log('REALTIME_EVENT_RECEIVED (New Passenger Request):', payload)
-                        refreshData()
-                    }
-                )
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'UPDATE',
-                        schema: 'public',
-                        table: 'ride_requests'
-                    },
-                    (payload) => {
-                        console.log('REALTIME_EVENT_RECEIVED (Request):', payload)
-                        if (payload.new.hidden_by_driver) {
-                            animateAndRemoveRequest(payload.new.id)
-                        } else {
-                            // Regular status update
+            if (activeRideIds) {
+                requestsChannel = supabase
+                    .channel('driver_requests')
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'INSERT',
+                            schema: 'public',
+                            table: 'ride_requests',
+                            filter: filterClause
+                        },
+                        (payload) => {
+                            console.log('REALTIME_EVENT_RECEIVED (New Passenger Request):', payload)
                             refreshData()
                         }
-                    }
-                )
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'DELETE',
-                        schema: 'public',
-                        table: 'ride_requests'
-                    },
-                    (payload) => {
-                        console.log("REALTIME_EVENT_RECEIVED (Delete Passenger Request):", payload)
-                        animateAndRemoveRequest(payload.old.id)
-                    }
-                )
-                .subscribe()
+                    )
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'ride_requests',
+                            filter: filterClause
+                        },
+                        (payload) => {
+                            console.log('REALTIME_EVENT_RECEIVED (Request):', payload)
+                            if (payload.new.hidden_by_driver) {
+                                animateAndRemoveRequest(payload.new.id)
+                            } else {
+                                // Regular status update
+                                refreshData()
+                            }
+                        }
+                    )
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'DELETE',
+                            schema: 'public',
+                            table: 'ride_requests'
+                        },
+                        (payload) => {
+                            console.log("REALTIME_EVENT_RECEIVED (Delete Passenger Request):", payload)
+                            animateAndRemoveRequest(payload.old.id)
+                        }
+                    )
+                    .subscribe()
+            }
 
             ridesChannel = supabase
                 .channel('driver_rides_sub')
@@ -188,7 +195,7 @@ export default function DashboardClient({
             if (requestsChannel) supabase.removeChannel(requestsChannel)
             if (ridesChannel) supabase.removeChannel(ridesChannel)
         }
-    }, [supabase, refreshData, animateAndRemoveRide, animateAndRemoveRequest])
+    }, [supabase, refreshData, animateAndRemoveRide, animateAndRemoveRequest, rides])
 
     const activeRidesCount = rides.filter(r => r.status === 'active').length
     const pendingRequestsCount = pendingRequests.length

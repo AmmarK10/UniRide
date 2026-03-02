@@ -162,3 +162,6 @@ create trigger on_auth_user_created
 
 -- Enable Realtime for Messages
 alter publication supabase_realtime add table messages;
+alter publication supabase_realtime add table ride_requests;
+alter publication supabase_realtime add table rides;
+
