@@ -117,7 +117,7 @@ export default function RideCard({ ride, onDelete }: RideCardProps) {
                             size="icon"
                             onClick={handleDelete}
                             disabled={isPending}
-                            className="text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="text-slate-400 hover:text-red-500 hover:bg-red-50 md:opacity-0 group-hover:opacity-100 transition-opacity"
                             title="Delete Ride"
                         >
                             {isPending ? (
